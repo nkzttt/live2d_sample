@@ -1,0 +1,12 @@
+{
+  "name": "live2d sample for web",
+  "version": "1.0.0",
+  "description": "This is live2d sample with PixiJS for web.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
