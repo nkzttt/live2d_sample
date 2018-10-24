@@ -1,5 +1,14 @@
-const fn = (o: { foo?: any }): boolean => {
-    return typeof o.foo !== 'undefined';
+import * as PIXI from 'pixi.js';
+
+// リソース読み込み後の初期化
+const setup = (loader: PIXI.loaders.Loader, resources: PIXI.loaders.ResourceDictionary) => {
+    const moc = Live2DCubismCore.Moc.fromArrayBuffer(resources['moc'].data);
+    console.log(moc);
 };
 
-console.log(fn({ foo: 1 }));
+// リソース読み込み
+PIXI.loader
+    .add('moc', '/Koharu/Koharu.moc3', { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER })
+    .add('texcure', '/Koharu/Koharu.png')
+    .add('motion', '/Koharu/Koharu.motion3.json', { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON })
+    .load(setup);
