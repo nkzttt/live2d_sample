@@ -16,11 +16,6 @@
     "watch": "run-p copy:assets:watch bundle:watch",
     "server": "browser-sync start --config bs-config.js"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm run type:check"
-    }
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",

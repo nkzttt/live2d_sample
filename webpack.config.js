@@ -15,5 +15,7 @@ module.exports = {
       exclude: /node_modules/,
       loader: 'babel-loader'
     }]
-  }
+  },
+  mode: 'development',
+  devtool: 'inline-source-map'
 };
