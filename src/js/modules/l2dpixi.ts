@@ -1,3 +1,4 @@
+import * as PIXI from 'pixi.js';
 import * as L2DFrameWork from './l2dframework';
 
 /** PIXI Cubism model wrapper. */

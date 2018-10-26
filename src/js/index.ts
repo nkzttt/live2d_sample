@@ -11,7 +11,7 @@
  */
 
 import * as PIXI from 'pixi.js';
-import * as L2DPixi from './modules/l2dpixi';
+import * as L2DPixi from './modules/l2dpixi_slim';
 import * as L2DFrameWork from './modules/l2dframework';
 
 loadResources(
