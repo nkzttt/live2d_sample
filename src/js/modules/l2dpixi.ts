@@ -440,16 +440,9 @@ export class MaskSpriteContainer extends PIXI.Container{
 export class ModelBuilder {
     /**
      * Sets moc.
-     *
-     * @param value Moc.
-     *
-     * @return Builder.
      */
-    public setMoc(value: Live2DCubismCore.Moc): ModelBuilder {
-        this._moc = value;
-
-
-        return this;
+    constructor(mocBuffer: ArrayBuffer) {
+        this._moc = Live2DCubismCore.Moc.fromArrayBuffer(mocBuffer);
     }
 
     /**
