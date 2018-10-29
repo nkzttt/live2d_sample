@@ -11,8 +11,8 @@
  */
 
 import * as PIXI from 'pixi.js';
-import * as L2DPixi from './modules/l2dpixi_slim';
-import * as L2DFrameWork from './modules/l2dframework';
+import * as L2DPixi from './modules/l2dpixi';
+import * as L2DFrameWork from './modules/l2dframework_slim';
 
 loadResources(
     [
@@ -58,7 +58,10 @@ function loadResources(
     // 読み込み開始
     return new Promise((resolve, reject) => {
         loader
-            .load((loader: PIXI.loaders.Loader, resources: PIXI.loaders.ResourceDictionary) => resolve({loader, resources}))
+            .load((loader: PIXI.loaders.Loader, resources: PIXI.loaders.ResourceDictionary) => resolve({
+                loader,
+                resources
+            }))
             .onError.add(reject);
     });
 }
@@ -67,39 +70,22 @@ function loadResources(
  * リソース読み込み後の設定
  */
 function onLoad(
-    {loader, resources}: {loader: PIXI.loaders.Loader, resources: PIXI.loaders.ResourceDictionary}
+    {loader, resources}: { loader: PIXI.loaders.Loader, resources: PIXI.loaders.ResourceDictionary }
 ): void {
-    // モデル設定
-    const model = createModel(resources);
-    const animation = L2DFrameWork.Animation.fromMotion3Json(resources['motion'].data);
-    model.animator
-        .getLayer("base")
-        .play(animation);
+    // モデル作成
+    const builder = new L2DPixi.ModelBuilder();
+    builder.setMoc(resources['moc'].data);
+    builder.addTexture(0, resources['texture'].texture);
+    builder.addAnimatorLayer({name: "base"});
+    const model = builder.build() as L2DPixi.Model;
 
-    // pixi アプリケーション初期化
-    const app = initApp(model);
+    // アニメーション再生
+    model.addAnimation(0, resources['motion'].data);
+    model.playAnimation('base', 0);
 
-    // リサイズイベント設定
-    window.onresize = initResize(app, model);
-}
-
-/**
- * pixiモデルを生成して返す
- */
-function createModel(resources: PIXI.loaders.ResourceDictionary): L2DPixi.Model {
-    return new L2DPixi.ModelBuilder(resources['moc'].data)
-        .addTexture(0, resources['texture'].texture)
-        .addAnimatorLayer("base", L2DFrameWork.BuiltinAnimationBlenders.OVERRIDE, 1)
-        .build();
-}
-
-/**
- * pixi アプリケーション設定
- */
-function initApp(model: L2DPixi.Model): PIXI.Application {
     // id="#l2d"もしくはbodyにcanvasを追加
     const target = document.querySelector('#l2d') || document.body;
-    const app = new PIXI.Application(target.clientWidth, target.clientHeight, {transparent : true});
+    const app = new PIXI.Application(target.clientWidth, target.clientHeight, {transparent: true});
     target.appendChild(app.view);
 
     // ステージへモデル追加
@@ -112,7 +98,8 @@ function initApp(model: L2DPixi.Model): PIXI.Application {
         model.masks.update(app.renderer);
     });
 
-    return app;
+    // リサイズイベント設定
+    window.onresize = initResize(app, model);
 }
 
 /**
@@ -147,4 +134,5 @@ function initResize(app: PIXI.Application, model: L2DPixi.Model): () => void {
 /**
  * リソース読み込み失敗ハンドリング
  */
-function onLoadError(): void {/* TODO: handle loader error */}
+function onLoadError(): void {/* TODO: handle loader error */
+}
