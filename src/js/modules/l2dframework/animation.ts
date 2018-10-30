@@ -92,6 +92,114 @@ export class AnimatorBuilder {
 }
 
 /**
+ * Cubism animation layer.
+ */
+export class AnimationLayer {
+    private _animation: Animation | null = null;
+    private _time: number = 0;
+    private _goalAnimation: Animation | null = null;
+    private _goalTime: number = 0;
+    private _fadeTime: number = 0;
+    private _fadeDuration: number = 0;
+    private _play: boolean = false;
+
+    public blend: IAnimationBlender = BuiltinAnimationBlenders.OVERRIDE;
+    public weightCrossfade: IAnimationCrossfadeWeighter = BuiltinCrossfadeWeighters.LINEAR;
+    public weight: number = 1;
+
+    get currentAnimation(): Animation | null {
+        return this._animation;
+    }
+
+    get currentTime(): number {
+        return this._time;
+    }
+
+    set currentTime(value: number) {
+        this._time = value;
+    }
+
+    get isPlaying(): boolean {
+        return this._play;
+    }
+
+    public play(animation: Animation, fadeDuration: number = 0): void {
+        if (this._animation && fadeDuration > 0) {
+            this._goalAnimation = animation;
+            this._goalTime = 0;
+
+            this._fadeTime = 0;
+            this._fadeDuration = fadeDuration;
+        }
+        else {
+            this._animation = animation;
+            this.currentTime = 0;
+            this._play = true;
+        }
+    }
+
+    public resume(): void {
+        this._play = true;
+    }
+
+    public pause(): void {
+        this._play = false;
+    }
+
+    public stop(): void {
+        this._play = false;
+        this.currentTime = 0
+    }
+
+    public _update(deltaTime: number): void {
+        // Return if not playing.
+        if (!this._play) {
+            return;
+        }
+
+        // Progress time if playing.
+        this._time += deltaTime;
+        this._goalTime += deltaTime;
+        this._fadeTime += deltaTime;
+    }
+
+    public _evaluate(target: Live2DCubismCore.Model, stackFlags: any): void {
+        // Return if evaluation isn't possible.
+        if (this._animation == null) {
+            return;
+        }
+
+        // Clamp weight.
+        let weight = (this.weight < 1)
+            ? this.weight
+            : 1;
+
+        // Evaluate current animation.
+        let animationWeight = (this._goalAnimation != null)
+            ? (weight * this.weightCrossfade(this._fadeTime, this._fadeDuration))
+            : weight;
+
+        this._animation.evaluate(this._time, animationWeight, this.blend, target, stackFlags);
+
+        // Evaluate goal animation.
+        if (this._goalAnimation != null) {
+            animationWeight = 1 - (weight * this.weightCrossfade(this._fadeTime, this._fadeDuration));
+
+
+            this._goalAnimation.evaluate(this._goalTime, animationWeight, this.blend, target, stackFlags);
+
+
+            // Finalize crossfade.
+            if (this._fadeTime > this._fadeDuration) {
+                this._animation = this._goalAnimation;
+                this._time = this._goalTime;
+                this._goalAnimation = null;
+            }
+        }
+    }
+}
+
+/**
  * cubism animator
  */
 export class Animator {
@@ -149,36 +257,6 @@ export class Animator {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * Cubism animation
  */
@@ -188,10 +266,10 @@ export class Animation {
     public loop: boolean;
     public userDataCount: number;
     public totalUserDataSize: number;
-    public modelTracks: Array<AnimationTrack> = new Array<AnimationTrack>();
-    public parameterTracks: Array<AnimationTrack> = new Array<AnimationTrack>();
-    public partOpacityTracks: Array<AnimationTrack> = new Array<AnimationTrack>();
-    public userDataBodys: Array<AnimationUserDataBody> = new Array<AnimationUserDataBody>();
+    public modelTracks: Array<AnimationTrack> = [];
+    public parameterTracks: Array<AnimationTrack> = [];
+    public partOpacityTracks: Array<AnimationTrack> = [];
+    public userDataBodys: Array<AnimationUserDataBody> = [];
     private _callbackFunctions: Array<(arg: string) => void> = [];
     private _lastTime: number = 0;
 
@@ -217,8 +295,8 @@ export class Animation {
             // Deserialize segments.
             let s = c['Segments'];
 
-            let points = new Array<AnimationPoint>();
-            let segments = new Array<AnimationSegment>();
+            let points: Array<AnimationPoint> = [];
+            let segments: Array<AnimationSegment> = [];
 
             points.push(new AnimationPoint(s[0], s[1]));
 
@@ -387,114 +465,6 @@ export class Animation {
 export class BuiltinCrossfadeWeighters {
     public static LINEAR(time: number, duration: number): number {
         return (time / duration);
-    }
-}
-
-/**
- * Cubism animation layer.
- */
-export class AnimationLayer {
-    private _animation: Animation | null = null;
-    private _time: number = 0;
-    private _goalAnimation: Animation | null = null;
-    private _goalTime: number = 0;
-    private _fadeTime: number = 0;
-    private _fadeDuration: number = 0;
-    private _play: boolean = false;
-
-    public blend: IAnimationBlender = BuiltinAnimationBlenders.OVERRIDE;
-    public weightCrossfade: IAnimationCrossfadeWeighter = BuiltinCrossfadeWeighters.LINEAR;
-    public weight: number = 1;
-
-    get currentAnimation(): Animation | null {
-        return this._animation;
-    }
-
-    get currentTime(): number {
-        return this._time;
-    }
-
-    set currentTime(value: number) {
-        this._time = value;
-    }
-
-    get isPlaying(): boolean {
-        return this._play;
-    }
-
-    public play(animation: Animation, fadeDuration: number = 0): void {
-        if (this._animation && fadeDuration > 0) {
-            this._goalAnimation = animation;
-            this._goalTime = 0;
-
-            this._fadeTime = 0;
-            this._fadeDuration = fadeDuration;
-        }
-        else {
-            this._animation = animation;
-            this.currentTime = 0;
-            this._play = true;
-        }
-    }
-
-    public resume(): void {
-        this._play = true;
-    }
-
-    public pause(): void {
-        this._play = false;
-    }
-
-    public stop(): void {
-        this._play = false;
-        this.currentTime = 0
-    }
-
-    public _update(deltaTime: number): void {
-        // Return if not playing.
-        if (!this._play) {
-            return;
-        }
-
-        // Progress time if playing.
-        this._time += deltaTime;
-        this._goalTime += deltaTime;
-        this._fadeTime += deltaTime;
-    }
-
-    public _evaluate(target: Live2DCubismCore.Model, stackFlags: any): void {
-        // Return if evaluation isn't possible.
-        if (this._animation == null) {
-            return;
-        }
-
-        // Clamp weight.
-        let weight = (this.weight < 1)
-            ? this.weight
-            : 1;
-
-        // Evaluate current animation.
-        let animationWeight = (this._goalAnimation != null)
-            ? (weight * this.weightCrossfade(this._fadeTime, this._fadeDuration))
-            : weight;
-
-        this._animation.evaluate(this._time, animationWeight, this.blend, target, stackFlags);
-
-        // Evaluate goal animation.
-        if (this._goalAnimation != null) {
-            animationWeight = 1 - (weight * this.weightCrossfade(this._fadeTime, this._fadeDuration));
-
-
-            this._goalAnimation.evaluate(this._goalTime, animationWeight, this.blend, target, stackFlags);
-
-
-            // Finalize crossfade.
-            if (this._fadeTime > this._fadeDuration) {
-                this._animation = this._goalAnimation;
-                this._time = this._goalTime;
-                this._goalAnimation = null;
-            }
-        }
     }
 }
 
