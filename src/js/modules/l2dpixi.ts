@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import * as L2DFrameWork from './l2dframework_slim';
+import * as L2DFrameWork from './l2dframework';
 
 /**
  * PIXI Cubism [[Model]] builder
@@ -10,7 +10,7 @@ export class ModelBuilder {
     private _textures: Array<PIXI.Texture>;
     private _animatorLayers: Array<{
         name: string,
-        blender: L2DFrameWork.IAnimationBlender,
+        blender: L2DFrameWork.animation.IAnimationBlender,
         weight: number
     }>;
 
@@ -36,11 +36,11 @@ export class ModelBuilder {
     public addAnimatorLayer(
         {
             name,
-            blender = L2DFrameWork.BuiltinAnimationBlenders.OVERRIDE,
+            blender = L2DFrameWork.animation.BuiltinAnimationBlenders.OVERRIDE,
             weight = 1
         }: {
             name: string,
-            blender?: L2DFrameWork.IAnimationBlender,
+            blender?: L2DFrameWork.animation.IAnimationBlender,
             weight?: number
         }
     ): void {
@@ -69,9 +69,9 @@ export class ModelBuilder {
         const coreModel = Live2DCubismCore.Model.fromMoc(moc);
 
         // create animator
-        const animatorBuilder = new L2DFrameWork.AnimatorBuilder();
+        const animatorBuilder = new L2DFrameWork.animation.AnimatorBuilder();
         animatorBuilder.setTarget(coreModel);
-        animatorBuilder.setTimeScale(1);
+        animatorBuilder.setTimeScale(this._setTimeScale);
         this._animatorLayers.forEach((
             {
                 name,
@@ -79,13 +79,13 @@ export class ModelBuilder {
                 weight
             }: {
                 name: string,
-                blender: L2DFrameWork.IAnimationBlender,
+                blender: L2DFrameWork.animation.IAnimationBlender,
                 weight: number
             }
         ) => {
             animatorBuilder.addLayer(name, blender, weight);
         });
-        const animator = animatorBuilder.build();
+        const animator = animatorBuilder.build() as L2DFrameWork.animation.Animator;
 
         // Create model.
         return new Model(coreModel, this._textures, animator);
@@ -98,8 +98,8 @@ export class ModelBuilder {
 export class Model extends PIXI.Container {
     private _coreModel: Live2DCubismCore.Model;
     private _textures: Array<PIXI.Texture>;
-    private _animator: L2DFrameWork.Animator;
-    private _animations: Array<L2DFrameWork.Animation>;
+    private _animator: L2DFrameWork.animation.Animator;
+    private _animations: Array<L2DFrameWork.animation.Animation>;
     private _meshes: Array<CubismMesh>;
     private _maskSpriteContainer: MaskSpriteContainer;
 
@@ -111,7 +111,7 @@ export class Model extends PIXI.Container {
         return this._textures;
     }
 
-    get animator(): L2DFrameWork.Animator {
+    get animator(): L2DFrameWork.animation.Animator {
         return this._animator;
     }
 
@@ -123,7 +123,7 @@ export class Model extends PIXI.Container {
         return this._maskSpriteContainer;
     }
 
-    constructor(coreModel: Live2DCubismCore.Model, textures: Array<PIXI.Texture>, animator: L2DFrameWork.Animator) {
+    constructor(coreModel: Live2DCubismCore.Model, textures: Array<PIXI.Texture>, animator: L2DFrameWork.animation.Animator) {
         super();
 
         this._coreModel = coreModel;
@@ -190,13 +190,18 @@ export class Model extends PIXI.Container {
         this._maskSpriteContainer = new MaskSpriteContainer(this);
     }
 
-    public addAnimation(index: number, data: object) {
-        const animation = L2DFrameWork.Animation.fromMotion3Json(data);
+    public addAnimation(index: number, data: object): void {
+        const animation = new L2DFrameWork.animation.Animation(data);
         this._animations.splice(index, 0, animation);
     }
 
-    public playAnimation(name: string, index: number) {
+    public playAnimation(name: string, index: number): void {
         const animatorLayer = this.animator.getLayer(name);
+        if (!animatorLayer) {
+            console.warn('missing animation layer...');
+            return;
+        }
+
         animatorLayer.play(this._animations[index]);
     }
 
