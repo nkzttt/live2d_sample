@@ -1,137 +1,115 @@
-/**
- * ◆処理フロー◆
- *
- * [ リソース読み込み ] → エラーならハンドリングして終了
- *   ↓
- * [ LIVE2Dモデル設定 ]
- *   ↓
- * [ PIXIアプリケーション設定 ]
- *   ↓
- * [ リサイズイベント設定 ]
- */
+import * as PIXI from "pixi.js";
+import { ModelBuilder, Model } from "./modules/l2dpixi";
 
-import * as PIXI from 'pixi.js';
-import * as L2DPixi from './modules/l2dpixi';
+const loadResources = (
+  resources: {
+    name: string;
+    path: string;
+    option?: object;
+  }[]
+) => {
+  const loader = new PIXI.loaders.Loader();
+  resources.forEach(({ name, path, option }) => {
+    loader.add(name, path, option);
+  });
+  return new Promise<PIXI.loaders.ResourceDictionary>((resolve, reject) => {
+    loader
+      .load(
+        (
+          loader: PIXI.loaders.Loader,
+          resources: PIXI.loaders.ResourceDictionary
+        ) => resolve(resources)
+      )
+      .onError.add(reject);
+  });
+};
 
-loadResources(
-    [
-        {
-            name: 'moc',
-            path: '/Koharu/Koharu.moc3',
-            option: {xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER}
-        },
-        {
-            name: 'texture',
-            path: '/Koharu/Koharu.png'
-        },
-        {
-            name: 'motion',
-            path: '/Koharu/Koharu.motion3.json',
-            option: {xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON}
-        }
-    ]
-)
-    .then(onLoad)
-    .catch(onLoadError);
+const onLoad = (resources: PIXI.loaders.ResourceDictionary) => {
+  const builder = new ModelBuilder({
+    moc: Live2DCubismCore.Moc.fromArrayBuffer(resources.moc.data),
+    texture: resources.texture.texture,
+  });
+  const model = builder.build();
 
-/**
- * リソース読み込み
- */
-function loadResources(
-    resources: Array<{
-        name: string,
-        path: string,
-        option?: object
-    }>
-): Promise<{
-    loader: PIXI.loaders.Loader,
-    resources: PIXI.loaders.ResourceDictionary
-}> {
-    const loader = new PIXI.loaders.Loader;
+  // アニメーション再生
+  model.addAnimation(0, resources.motion.data);
+  model.playAnimation("base", 0);
 
-    // リソース追加
-    resources.forEach(resource => {
-        loader.add(resource.name, resource.path, resource.option)
-    });
+  // id="#l2d"もしくはbodyにcanvasを追加
+  const target = document.querySelector("#l2d") || document.body;
+  const app = new PIXI.Application(target.clientWidth, target.clientHeight, {
+    transparent: true,
+  });
+  target.appendChild(app.view);
 
-    // 読み込み開始
-    return new Promise((resolve, reject) => {
-        loader
-            .load((loader: PIXI.loaders.Loader, resources: PIXI.loaders.ResourceDictionary) => resolve({
-                loader,
-                resources
-            }))
-            .onError.add(reject);
-    });
-}
+  // ステージへモデル追加
+  app.stage.addChild(model);
+  app.stage.addChild(model.masks);
 
-/**
- * リソース読み込み後の設定
- */
-function onLoad(
-    {loader, resources}: { loader: PIXI.loaders.Loader, resources: PIXI.loaders.ResourceDictionary }
-): void {
-    // モデル作成
-    const builder = new L2DPixi.ModelBuilder();
-    builder.setMoc(resources['moc'].data);
-    builder.addTexture(0, resources['texture'].texture);
-    builder.addAnimatorLayer({name: "base"});
-    const model = builder.build() as L2DPixi.Model;
+  // 描画ループ
+  app.ticker.add((deltaTime) => {
+    model.update(deltaTime);
+    model.masks.update(app.renderer);
+  });
 
-    // アニメーション再生
-    model.addAnimation(0, resources['motion'].data);
-    model.playAnimation('base', 0);
+  // リサイズイベント設定
+  window.onresize = initResize(app, model);
+};
 
-    // id="#l2d"もしくはbodyにcanvasを追加
-    const target = document.querySelector('#l2d') || document.body;
-    const app = new PIXI.Application(target.clientWidth, target.clientHeight, {transparent: true});
-    target.appendChild(app.view);
-
-    // ステージへモデル追加
-    app.stage.addChild(model);
-    app.stage.addChild(model.masks);
-
-    // 描画ループ
-    app.ticker.add(deltaTime => {
-        model.update(deltaTime);
-        model.masks.update(app.renderer);
-    });
-
-    // リサイズイベント設定
-    window.onresize = initResize(app, model);
-}
+loadResources([
+  {
+    name: "moc",
+    path: "/Koharu/Koharu.moc3",
+    option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER },
+  },
+  {
+    name: "texture",
+    path: "/Koharu/Koharu.png",
+  },
+  {
+    name: "motion",
+    path: "/Koharu/Koharu.motion3.json",
+    option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON },
+  },
+])
+  .then(onLoad)
+  .catch(onLoadError);
 
 /**
  * リサイズイベントを設定して返す
  */
-function initResize(app: PIXI.Application, model: L2DPixi.Model): () => void {
-    const onResize = () => {
-        // Keep 16:9 ratio.
-        const width = window.innerWidth;
-        const height = (width / 16.0) * 9.0;
+function initResize(app: PIXI.Application, model: Model): () => void {
+  const onResize = () => {
+    // Keep 16:9 ratio.
+    const width = window.innerWidth;
+    const height = (width / 16.0) * 9.0;
 
-        // Resize app.
-        app.view.style.width = `${width}px`;
-        app.view.style.height = `${height}px`;
-        app.renderer.resize(width, height);
+    // Resize app.
+    app.view.style.width = `${width}px`;
+    app.view.style.height = `${height}px`;
+    app.renderer.resize(width, height);
 
-        // Resize model.
-        model.position = new PIXI.Point((width * 0.5), (height * 0.5));
-        model.scale = new PIXI.Point((model.position.x * 0.8), (model.position.x * 0.8));
+    // Resize model.
+    model.position = new PIXI.Point(width * 0.5, height * 0.5);
+    model.scale = new PIXI.Point(
+      model.position.x * 0.8,
+      model.position.x * 0.8
+    );
 
-        // Resize mask texture.
-        model.masks.resize(app.view.width, app.view.height);
-    };
+    // Resize mask texture.
+    model.masks.resize(app.view.width, app.view.height);
+  };
 
-    // 描画時に即実行
-    onResize();
+  // 描画時に即実行
+  onResize();
 
-    // 処理返却
-    return onResize;
+  // 処理返却
+  return onResize;
 }
 
 /**
  * リソース読み込み失敗ハンドリング
  */
-function onLoadError(): void {/* TODO: handle loader error */
+function onLoadError(): void {
+  /* TODO: handle loader error */
 }
