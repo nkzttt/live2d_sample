@@ -59,16 +59,16 @@ const onLoad = (resources: PIXI.loaders.ResourceDictionary) => {
 loadResources([
   {
     name: "moc",
-    path: "/Koharu/Koharu.moc3",
+    path: "/Er/model.moc3",
     option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER },
   },
   {
     name: "texture",
-    path: "/Koharu/Koharu.png",
+    path: "/Er/texture.png",
   },
   {
     name: "motion",
-    path: "/Koharu/Koharu.motion3.json",
+    path: "/Er/motions/idle_01.motion3.json",
     option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON },
   },
 ])
@@ -91,10 +91,7 @@ function initResize(app: PIXI.Application, model: Model): () => void {
 
     // Resize model.
     model.position = new PIXI.Point(width * 0.5, height * 0.5);
-    model.scale = new PIXI.Point(
-      model.position.x * 0.8,
-      model.position.x * 0.8
-    );
+    model.scale = new PIXI.Point(model.position.x, model.position.x);
 
     // Resize mask texture.
     model.masks.resize(app.view.width, app.view.height);
@@ -110,6 +107,7 @@ function initResize(app: PIXI.Application, model: Model): () => void {
 /**
  * リソース読み込み失敗ハンドリング
  */
-function onLoadError(): void {
+function onLoadError(e: Error): void {
+  console.error(e);
   /* TODO: handle loader error */
 }

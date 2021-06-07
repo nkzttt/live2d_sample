@@ -316,8 +316,6 @@ export class MaskSpriteContainer extends PIXI.Container {
 
           // Synchronize transform with visible mesh.
           maskMesh.transform = model.meshes[meshMaskID].transform;
-          maskMesh.worldTransform = model.meshes[meshMaskID].worldTransform;
-          maskMesh.localTransform = model.meshes[meshMaskID].localTransform;
 
           maskMesh.isCulling = model.meshes[meshMaskID].isCulling;
           maskMesh.isMaskMesh = true;
@@ -329,8 +327,6 @@ export class MaskSpriteContainer extends PIXI.Container {
 
         // Synchronize transform with visible model.
         newContainer.transform = model.transform;
-        newContainer.worldTransform = model.worldTransform;
-        newContainer.localTransform = model.localTransform;
         this._maskMeshContainers.push(newContainer);
 
         // Create RenderTexture instance.
