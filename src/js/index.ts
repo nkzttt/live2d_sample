@@ -56,29 +56,7 @@ const onLoad = (resources: PIXI.loaders.ResourceDictionary) => {
   window.onresize = initResize(app, model);
 };
 
-loadResources([
-  {
-    name: "moc",
-    path: "/Er/model.moc3",
-    option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER },
-  },
-  {
-    name: "texture",
-    path: "/Er/texture.png",
-  },
-  {
-    name: "motion",
-    path: "/Er/motions/idle_01.motion3.json",
-    option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON },
-  },
-])
-  .then(onLoad)
-  .catch(onLoadError);
-
-/**
- * リサイズイベントを設定して返す
- */
-function initResize(app: PIXI.Application, model: Model): () => void {
+const initResize = (app: PIXI.Application, model: Model) => {
   const onResize = () => {
     // Keep 16:9 ratio.
     const width = window.innerWidth;
@@ -102,12 +80,25 @@ function initResize(app: PIXI.Application, model: Model): () => void {
 
   // 処理返却
   return onResize;
-}
+};
 
-/**
- * リソース読み込み失敗ハンドリング
- */
-function onLoadError(e: Error): void {
-  console.error(e);
-  /* TODO: handle loader error */
-}
+loadResources([
+  {
+    name: "moc",
+    path: "/Er/model.moc3",
+    option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER },
+  },
+  {
+    name: "texture",
+    path: "/Er/texture.png",
+  },
+  {
+    name: "motion",
+    path: "/Er/motions/idle_01.motion3.json",
+    option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON },
+  },
+])
+  .then(onLoad)
+  .catch((e: Error) => {
+    console.error(e);
+  });

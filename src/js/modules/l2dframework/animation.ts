@@ -17,10 +17,14 @@ export const builtinAnimationBlenders: Record<
     source * (1 + (destination - 1) * weight),
 };
 
-export type IAnimationCrossfadeWeighter = (
-  time: number,
-  duration: number
-) => number;
+type IAnimationCrossfadeWeighter = (time: number, duration: number) => number;
+
+const builtinCrossfadeWeighters: Record<
+  "linear",
+  (time: number, duration: number) => number
+> = {
+  linear: (time, duration) => time / duration,
+};
 
 export class AnimatorBuilder {
   private _target: Live2DCubismCore.Model;
@@ -44,7 +48,7 @@ export class AnimatorBuilder {
     this._timeScale = timeScale;
     this._layer = {
       blender: layer.blender || builtinAnimationBlenders.override,
-      crossfadeWeighter: BuiltinCrossfadeWeighters.LINEAR,
+      crossfadeWeighter: builtinCrossfadeWeighters.linear,
       weight: layer.weight || 1,
     };
   }
@@ -69,7 +73,7 @@ class AnimationLayer {
 
   public blend: IAnimationBlender = builtinAnimationBlenders.override;
   public weightCrossfade: IAnimationCrossfadeWeighter =
-    BuiltinCrossfadeWeighters.LINEAR;
+    builtinCrossfadeWeighters.linear;
   public weight: number = 1;
 
   get currentAnimation() {
@@ -202,89 +206,144 @@ export class Animator {
   }
 }
 
-// Cubism animation segment evaluator
-export interface IAnimationSegmentEvaluator {
-  (points: Array<AnimationPoint>, offset: number, time: number): number;
+type AnimationPoint = {
+  time: number;
+  value: number;
+};
+
+type IAnimationSegmentEvaluator = (
+  points: Array<AnimationPoint>,
+  offset: number,
+  time: number
+) => number;
+
+type AnimationSegment = {
+  offset: number;
+  evaluate: IAnimationSegmentEvaluator;
+};
+
+const builtinAnimationSegmentEvaluators: Record<
+  "linear" | "bezier" | "stepped" | "inverseStepped",
+  IAnimationSegmentEvaluator
+> = {
+  linear: (points, offset, time) => {
+    const p0 = points[offset + 0];
+    const p1 = points[offset + 1];
+    const t = (time - p0.time) / (p1.time - p0.time);
+    return p0.value + (p1.value - p0.value) * t;
+  },
+  bezier: (points, offset, time) => {
+    const lerp = (a: AnimationPoint, b: AnimationPoint, t: number) => ({
+      time: a.time + (b.time - a.time) * t,
+      value: a.value + (b.value - a.value) * t,
+    });
+
+    const t =
+      (time - points[offset + 0].time) /
+      (points[offset + 3].time - points[offset].time);
+    const p01 = lerp(points[offset + 0], points[offset + 1], t);
+    const p12 = lerp(points[offset + 1], points[offset + 2], t);
+    const p23 = lerp(points[offset + 2], points[offset + 3], t);
+    const p012 = lerp(p01, p12, t);
+    const p123 = lerp(p12, p23, t);
+
+    return lerp(p012, p123, t).value;
+  },
+  stepped: (points, offset) => points[offset + 0].value,
+  inverseStepped: (points, offset) => points[offset + 1].value,
+};
+
+class AnimationTrack {
+  constructor(
+    public targetId: string,
+    public points: AnimationPoint[],
+    public segments: AnimationSegment[]
+  ) {}
+
+  public evaluate(time: number) {
+    const s =
+      this.segments.length > 1
+        ? this.segments.findIndex((_segment, i) => {
+            if (i === this.segments.length - 1) return true;
+            return this.points[this.segments[i + 1].offset].time >= time;
+          })
+        : 0;
+    return this.segments[s].evaluate(
+      this.points,
+      this.segments[s].offset,
+      time
+    );
+  }
 }
 
-/**
- * Cubism animation
- */
 export class Animation {
   public duration: number;
   public fps: number;
   public loop: boolean;
   public userDataCount: number;
   public totalUserDataSize: number;
-  public modelTracks: Array<AnimationTrack> = [];
-  public parameterTracks: Array<AnimationTrack> = [];
-  public partOpacityTracks: Array<AnimationTrack> = [];
-  public userDataBodys: Array<AnimationUserDataBody> = [];
+  public modelTracks: AnimationTrack[] = [];
+  public parameterTracks: AnimationTrack[] = [];
+  public partOpacityTracks: AnimationTrack[] = [];
+  public userDataBodys: { time: number; value: string }[] = [];
   private _callbackFunctions: Array<(arg: string) => void> = [];
   private _lastTime: number = 0;
 
+  // TODO: type guard
   constructor(motion3Json: any) {
-    // Deserialize meta.
     this.duration = motion3Json["Meta"]["Duration"];
     this.fps = motion3Json["Meta"]["Fps"];
     this.loop = motion3Json["Meta"]["Loop"];
     this.userDataCount = motion3Json["Meta"]["UserDataCount"];
     this.totalUserDataSize = motion3Json["Meta"]["TotalUserDataSize"];
-
-    // Deserialize user data.
-    if (motion3Json["UserData"] != null) {
-      motion3Json["UserData"].forEach((u: any) => {
-        // Deserialize animation user data body.
-        this.userDataBodys.push(
-          new AnimationUserDataBody(u["Time"], u["Value"])
-        );
-      });
-      console.assert(this.userDataBodys.length === this.userDataCount);
+    if (motion3Json["UserData"]) {
+      this.userDataBodys = motion3Json["UserData"].map((u: any) => ({
+        time: u["Time"],
+        value: u["Value"],
+      }));
     }
-
-    // Deserialize tracks.
-    motion3Json["Curves"].forEach((c: any) => {
-      // Deserialize segments.
-      let s = c["Segments"];
-
-      let points: Array<AnimationPoint> = [];
-      let segments: Array<AnimationSegment> = [];
-
-      points.push(new AnimationPoint(s[0], s[1]));
+    motion3Json["Curves"].forEach((curve: any) => {
+      const s = curve["Segments"];
+      const points: AnimationPoint[] = [{ time: s[0], value: s[1] }];
+      const segments: AnimationSegment[] = [];
 
       for (let t = 2; t < s.length; t += 3) {
-        let offset = points.length - 1;
-        let evaluate = BuiltinAnimationSegmentEvaluators.LINEAR;
-
-        // Handle segment types.
+        const offset = points.length - 1;
         switch (s[t]) {
           case 1:
-            evaluate = BuiltinAnimationSegmentEvaluators.BEZIER;
-            points.push(new AnimationPoint(s[t + 1], s[t + 2]));
-            points.push(new AnimationPoint(s[t + 3], s[t + 4]));
+            points.push({ time: s[t + 1], value: s[t + 2] });
+            points.push({ time: s[t + 3], value: s[t + 4] });
             t += 4;
+            segments.push({
+              offset,
+              evaluate: builtinAnimationSegmentEvaluators.bezier,
+            });
             break;
           case 2:
-            evaluate = BuiltinAnimationSegmentEvaluators.STEPPED;
+            segments.push({
+              offset,
+              evaluate: builtinAnimationSegmentEvaluators.stepped,
+            });
             break;
           case 3:
-            evaluate = BuiltinAnimationSegmentEvaluators.INVERSE_STEPPED;
+            segments.push({
+              offset,
+              evaluate: builtinAnimationSegmentEvaluators.inverseStepped,
+            });
             break;
           default:
-            // TODO Handle unexpected segment type.
+            segments.push({
+              offset,
+              evaluate: builtinAnimationSegmentEvaluators.linear,
+            });
             break;
         }
 
-        // Push segment and point.
-        points.push(new AnimationPoint(s[t + 1], s[t + 2]));
-        segments.push(new AnimationSegment(offset, evaluate));
+        points.push({ time: s[t + 1], value: s[t + 2] });
       }
 
-      // Create track.
-      let track = new AnimationTrack(c["Id"], points, segments);
-
-      // Push track.
-      switch (c["Target"]) {
+      const track = new AnimationTrack(curve["Id"], points, segments);
+      switch (curve["Target"]) {
         case "Model":
           this.modelTracks.push(track);
           break;
@@ -295,30 +354,27 @@ export class Animation {
           this.partOpacityTracks.push(track);
           break;
         default:
-          // TODO Handle unexpected target.
           break;
       }
     });
   }
 
-  public addAnimationCallback(callbackFunc: (arg: string) => void): void {
-    this._callbackFunctions.push(callbackFunc);
+  public addAnimationCallback(callback: (arg: string) => void) {
+    this._callbackFunctions.push(callback);
   }
 
-  public removeAnimationCallback(callbackFunc: (arg: string) => void): void {
-    for (let _index = 0; _index < this._callbackFunctions.length; _index++) {
-      if (this._callbackFunctions[_index] === callbackFunc) {
-        this._callbackFunctions.splice(_index, 1);
-        return;
-      }
+  public removeAnimationCallback(callback: (arg: string) => void) {
+    const index = this._callbackFunctions.indexOf(callback);
+    if (index !== -1) {
+      this._callbackFunctions.splice(index, 1);
     }
   }
 
-  public clearAnimationCallback(): void {
+  public clearAnimationCallback() {
     this._callbackFunctions = [];
   }
 
-  private callAnimationCallback(value: string): void {
+  private callAnimationCallback(value: string) {
     this._callbackFunctions.forEach((cb) => cb(value));
   }
 
@@ -329,103 +385,96 @@ export class Animation {
     target: Live2DCubismCore.Model,
     stackFlags: any,
     groups: any = null
-  ): void {
-    // Return early if influence is minimal.
+  ) {
     if (weight <= 0.01) return;
 
-    // Loop animation time if requested.
     if (this.loop) {
       while (time > this.duration) {
         time -= this.duration;
       }
     }
 
-    // Evaluate tracks and apply results.
-    this.parameterTracks.forEach((t) => {
-      let p = target.parameters.ids.indexOf(t.targetId);
-      if (p >= 0) {
-        if (stackFlags[0][p] != true) {
-          target.parameters.values[p] = target.parameters.defaultValues[p];
-          stackFlags[0][p] = true;
+    this.parameterTracks.forEach((track) => {
+      const parametersId = target.parameters.ids.indexOf(track.targetId);
+      if (parametersId === -1) return;
+
+      if (!stackFlags[0][parametersId]) {
+        target.parameters.values[parametersId] =
+          target.parameters.defaultValues[parametersId];
+        stackFlags[0][parametersId] = true;
+      }
+
+      target.parameters.values[parametersId] = blend(
+        target.parameters.values[parametersId],
+        track.evaluate(time),
+        track.evaluate(0),
+        weight
+      );
+    });
+
+    this.partOpacityTracks.forEach((track) => {
+      let partsId = target.parts.ids.indexOf(track.targetId);
+      if (partsId === -1) return;
+
+      if (!stackFlags[1][partsId]) {
+        target.parts.opacities[partsId] = 1;
+        stackFlags[1][partsId] = true;
+      }
+
+      target.parts.opacities[partsId] = blend(
+        target.parts.opacities[partsId],
+        track.evaluate(time),
+        track.evaluate(0),
+        weight
+      );
+    });
+
+    this.modelTracks.forEach((track) => {
+      if (!groups) return;
+      const group = groups.getGroupById(track.targetId);
+      if (!(group && group.target === "Parameter")) return;
+      group.ids.forEach((groupId: string) => {
+        let parametersId = target.parameters.ids.indexOf(groupId);
+        if (parametersId === -1) return;
+
+        if (!stackFlags[0][parametersId]) {
+          target.parameters.values[parametersId] =
+            target.parameters.defaultValues[parametersId];
+          stackFlags[0][parametersId] = true;
         }
 
-        target.parameters.values[p] = blend(
-          target.parameters.values[p],
-          t.evaluate(time),
-          t.evaluate(0),
+        target.parameters.values[parametersId] = blend(
+          target.parameters.values[parametersId],
+          track.evaluate(time),
+          track.evaluate(0),
           weight
         );
-      }
+      });
     });
 
-    this.partOpacityTracks.forEach((t) => {
-      let p = target.parts.ids.indexOf(t.targetId);
-      if (p >= 0) {
-        if (stackFlags[1][p] != true) {
-          target.parts.opacities[p] = 1;
-          stackFlags[1][p] = true;
-        }
-
-        target.parts.opacities[p] = blend(
-          target.parts.opacities[p],
-          t.evaluate(time),
-          t.evaluate(0),
-          weight
-        );
-      }
-    });
-
-    // Evaluate model tracks.
-    this.modelTracks.forEach((t) => {
-      if (groups != null) {
-        let g = groups.getGroupById(t.targetId);
-        if (g != null && g.target === "Parameter") {
-          for (let tid of g.ids) {
-            let p = target.parameters.ids.indexOf(tid);
-            if (p >= 0) {
-              if (stackFlags[0][p] != true) {
-                target.parameters.values[p] =
-                  target.parameters.defaultValues[p];
-                stackFlags[0][p] = true;
-              }
-
-              target.parameters.values[p] = blend(
-                target.parameters.values[p],
-                t.evaluate(time),
-                t.evaluate(0),
-                weight
-              );
-            }
-          }
-        }
-      }
-    });
-
-    // Check user data event.
-    if (this._callbackFunctions != null) {
-      for (let ud of this.userDataBodys) {
+    if (this._callbackFunctions.length) {
+      this.userDataBodys.forEach((userData) => {
         if (
           this.isEventTriggered(
-            <number>ud.time,
+            userData.time,
             time,
             this._lastTime,
             this.duration
           )
         )
-          this.callAnimationCallback(ud.value);
-      }
+          this.callAnimationCallback(userData.value);
+      });
     }
 
     this._lastTime = time;
   }
 
-  /** 'true' if user data's time value is inside of range. */
   private isEventTriggered(
     timeEvaluate: number,
     timeForward: number,
     timeBack: number,
     duration: number
-  ): boolean {
+  ) {
     if (timeForward > timeBack) {
       if (timeEvaluate > timeBack && timeEvaluate < timeForward) return true;
     } else {
@@ -436,138 +485,5 @@ export class Animation {
         return true;
     }
     return false;
-  }
-}
-
-/**
- * Builtin Cubims crossfade
- */
-export class BuiltinCrossfadeWeighters {
-  public static LINEAR(time: number, duration: number): number {
-    return time / duration;
-  }
-}
-
-/** Cubism animation track. */
-export class AnimationTrack {
-  constructor(
-    public targetId: string,
-    public points: Array<AnimationPoint>,
-    public segments: Array<AnimationSegment>
-  ) {}
-
-  public evaluate(time: number): number {
-    // Find segment to evaluate.
-    let s = 0;
-    let lastS = this.segments.length - 1;
-    for (; s < lastS; ++s) {
-      if (this.points[this.segments[s + 1].offset].time >= time) break;
-    }
-
-    // Evaluate segment.
-    // TODO Passing segment offset somewhat to itself is awkward. Improve it?
-    return this.segments[s].evaluate(
-      this.points,
-      this.segments[s].offset,
-      time
-    );
-  }
-}
-
-/**
- * Unit of animation user data
- */
-export class AnimationUserDataBody {
-  public constructor(public time: number, public value: string) {}
-}
-
-/**
- * Cubism animation point
- */
-export class AnimationPoint {
-  public constructor(public time: number, public value: number) {}
-}
-
-/**
- * Cubism animation track segment
- */
-export class AnimationSegment {
-  public constructor(
-    public offset: number,
-    public evaluate: IAnimationSegmentEvaluator
-  ) {}
-}
-
-/**
- * Builtin Cubism animation segment evaluators
- */
-export class BuiltinAnimationSegmentEvaluators {
-  public static LINEAR: IAnimationSegmentEvaluator = function (
-    points: Array<AnimationPoint>,
-    offset: number,
-    time: number
-  ): number {
-    let p0 = points[offset + 0];
-    let p1 = points[offset + 1];
-    let t = (time - p0.time) / (p1.time - p0.time);
-    return p0.value + (p1.value - p0.value) * t;
-  };
-
-  public static BEZIER: IAnimationSegmentEvaluator = function (
-    points: Array<AnimationPoint>,
-    offset: number,
-    time: number
-  ): number {
-    let t =
-      (time - points[offset + 0].time) /
-      (points[offset + 3].time - points[offset].time);
-
-    let p01 = BuiltinAnimationSegmentEvaluators.lerp(
-      points[offset + 0],
-      points[offset + 1],
-      t
-    );
-    let p12 = BuiltinAnimationSegmentEvaluators.lerp(
-      points[offset + 1],
-      points[offset + 2],
-      t
-    );
-    let p23 = BuiltinAnimationSegmentEvaluators.lerp(
-      points[offset + 2],
-      points[offset + 3],
-      t
-    );
-
-    let p012 = BuiltinAnimationSegmentEvaluators.lerp(p01, p12, t);
-    let p123 = BuiltinAnimationSegmentEvaluators.lerp(p12, p23, t);
-
-    return BuiltinAnimationSegmentEvaluators.lerp(p012, p123, t).value;
-  };
-
-  public static STEPPED: IAnimationSegmentEvaluator = function (
-    points: Array<AnimationPoint>,
-    offset: number,
-    time: number
-  ): number {
-    return points[offset + 0].value;
-  };
-
-  public static INVERSE_STEPPED: IAnimationSegmentEvaluator = function (
-    points: Array<AnimationPoint>,
-    offset: number,
-    time: number
-  ): number {
-    return points[offset + 1].value;
-  };
-
-  private static lerp(
-    a: AnimationPoint,
-    b: AnimationPoint,
-    t: number
-  ): AnimationPoint {
-    return new AnimationPoint(
-      a.time + (b.time - a.time) * t,
-      a.value + (b.value - a.value) * t
-    );
   }
 }
