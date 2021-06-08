@@ -28,7 +28,7 @@ const builtinCrossfadeWeighters: Record<
 
 export class AnimatorBuilder {
   private _target: Live2DCubismCore.Model;
-  private _timeScale: number = 1;
+  private _timeScale = 1;
   private _layer: {
     blender: IAnimationBlender;
     crossfadeWeighter: IAnimationCrossfadeWeighter;
@@ -64,17 +64,17 @@ export class AnimatorBuilder {
 
 class AnimationLayer {
   private _animation: Animation | null = null;
-  private _time: number = 0;
+  private _time = 0;
   private _goalAnimation: Animation | null = null;
-  private _goalTime: number = 0;
-  private _fadeTime: number = 0;
-  private _fadeDuration: number = 0;
-  private _play: boolean = false;
+  private _goalTime = 0;
+  private _fadeTime = 0;
+  private _fadeDuration = 0;
+  private _play = false;
 
   public blend: IAnimationBlender = builtinAnimationBlenders.override;
   public weightCrossfade: IAnimationCrossfadeWeighter =
     builtinCrossfadeWeighters.linear;
-  public weight: number = 1;
+  public weight = 1;
 
   get currentAnimation() {
     return this._animation;
@@ -92,7 +92,7 @@ class AnimationLayer {
     return this._play;
   }
 
-  public play(animation: Animation, fadeDuration: number = 0) {
+  public play(animation: Animation, fadeDuration = 0) {
     if (this._animation && fadeDuration > 0) {
       this._goalAnimation = animation;
       this._goalTime = 0;
@@ -201,7 +201,7 @@ export class Animator {
       false
     );
     const partsStackFlags = new Array(this._target.parts.count).fill(false);
-    const stackFlags = new Array(paramStackFlags, partsStackFlags);
+    const stackFlags = [paramStackFlags, partsStackFlags];
     this._layer._evaluate(this._target, stackFlags);
   }
 }
@@ -287,7 +287,7 @@ export class Animation {
   public partOpacityTracks: AnimationTrack[] = [];
   public userDataBodys: { time: number; value: string }[] = [];
   private _callbackFunctions: Array<(arg: string) => void> = [];
-  private _lastTime: number = 0;
+  private _lastTime = 0;
 
   // TODO: type guard
   constructor(motion3Json: any) {
@@ -413,7 +413,7 @@ export class Animation {
     });
 
     this.partOpacityTracks.forEach((track) => {
-      let partsId = target.parts.ids.indexOf(track.targetId);
+      const partsId = target.parts.ids.indexOf(track.targetId);
       if (partsId === -1) return;
 
       if (!stackFlags[1][partsId]) {
@@ -434,7 +434,7 @@ export class Animation {
       const group = groups.getGroupById(track.targetId);
       if (!(group && group.target === "Parameter")) return;
       group.ids.forEach((groupId: string) => {
-        let parametersId = target.parameters.ids.indexOf(groupId);
+        const parametersId = target.parameters.ids.indexOf(groupId);
         if (parametersId === -1) return;
 
         if (!stackFlags[0][parametersId]) {

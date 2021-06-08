@@ -105,7 +105,7 @@ export class Model extends PIXI.Container {
     this._maskSpriteContainer = new MaskSpriteContainer(this);
   }
 
-  public addAnimation(index: number, data: object) {
+  public addAnimation(index: number, data: Record<string, unknown>) {
     const animation = new animationFramework.Animation(data);
     this._animations.splice(index, 0, animation);
   }
@@ -169,7 +169,7 @@ export class MaskSpriteContainer extends PIXI.Container {
   private _maskSprites: PIXI.Sprite[];
   private _maskMeshContainers: PIXI.Container[];
   private _maskTextures: PIXI.RenderTexture[];
-  private _maskShader: PIXI.Filter<{}>;
+  private _maskShader: PIXI.Filter<Record<string, unknown>>;
 
   get maskSprites() {
     return this._maskSprites;
@@ -192,21 +192,19 @@ export class MaskSpriteContainer extends PIXI.Container {
 
       const newContainer = new PIXI.Container();
 
-      model.coreModel.drawables.masks[meshIndex].forEach(
-        (maskId, maskIndex) => {
-          const maskMesh = new PIXI.mesh.Mesh(
-            model.meshes[maskId].texture,
-            model.meshes[maskId].vertices,
-            model.meshes[maskId].uvs,
-            model.meshes[maskId].indices,
-            PIXI.DRAW_MODES.TRIANGLES
-          );
-          maskMesh.name = model.meshes[maskId].name;
-          maskMesh.transform = model.meshes[maskId].transform;
-          maskMesh.filters = [this._maskShader];
-          newContainer.addChild(maskMesh);
-        }
-      );
+      model.coreModel.drawables.masks[meshIndex].forEach((maskId) => {
+        const maskMesh = new PIXI.mesh.Mesh(
+          model.meshes[maskId].texture,
+          model.meshes[maskId].vertices,
+          model.meshes[maskId].uvs,
+          model.meshes[maskId].indices,
+          PIXI.DRAW_MODES.TRIANGLES
+        );
+        maskMesh.name = model.meshes[maskId].name;
+        maskMesh.transform = model.meshes[maskId].transform;
+        maskMesh.filters = [this._maskShader];
+        newContainer.addChild(maskMesh);
+      });
 
       newContainer.transform = model.transform;
       this._maskMeshContainers.push(newContainer);
@@ -242,7 +240,7 @@ export class MaskSpriteContainer extends PIXI.Container {
   }
 
   public resize(viewWidth: number, viewHeight: number) {
-    this._maskTextures.forEach((texture, i) =>
+    this._maskTextures.forEach((texture) =>
       texture.resize(viewWidth, viewHeight, false)
     );
   }

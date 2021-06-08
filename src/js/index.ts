@@ -5,7 +5,7 @@ const loadResources = (
   resources: {
     name: string;
     path: string;
-    option?: object;
+    option?: Record<string, unknown>;
   }[]
 ) => {
   const loader = new PIXI.loaders.Loader();
