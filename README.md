@@ -1,8 +1,11 @@
-# LIVE2D SAMPLE
+# LIVE2D SAMPLE FOR WEB
 
 ## はじめに
 
 [公式サイト](https://www.live2d.com/download/cubism-sdk/download-web/)にて使用許諾契約をご確認の上、ご自身で Cubism Core for Web をダウンロードしてください。
+
+## 動作サンプル
+[https://nkzttt.github.io/live2d_sample/sample/](https://nkzttt.github.io/live2d_sample/sample/)
 
 ## 使い方
 
@@ -17,3 +20,5 @@ window.Live2DConfig = {
   motion: '.motion3.json のパス',
 };
 ```
+
+その他の機能は解析中です・・・

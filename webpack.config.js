@@ -4,7 +4,7 @@ module.exports = (env, argv) => {
   const mode = argv.mode || 'development';
   const isProduction = mode === 'production';
   return {
-    entry: path.join(__dirname, 'src/js/index'),
+    entry: path.join(__dirname, '_src/js/index'),
     output: {
       path: path.join(__dirname, 'dist/js'),
       filename: 'app.bundle.js'

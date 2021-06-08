@@ -1,5 +1,8 @@
 {
-  "include": [ "src/js/**/*", "src/types/*" ],
+  "include": [
+    "_src/js/**/*",
+    "_src/types/*"
+  ],
   "exclude": [ "node_modules" ],
   "compilerOptions": {
     /* Basic Options */

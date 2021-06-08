@@ -11,17 +11,24 @@
           padding: 0;
           margin: 0;
       }
+      body {
+          background-color: #fcfcfc;
+          color: #404040;
+      }
   </style>
 </head>
 <body>
+<h1>LIVE2D SAMPLE</h1>
+<p><a href="https://github.com/nkzttt/live2d_sample">GitHub</a></p>
 <div id="l2d" style="width: 500px; height: 500px;"></div>
-<script src="/js/live2dcubismcore.min.js" defer></script>
-<script src="/js/app.bundle.js" defer></script>
+<p>&copy; 2021 nkzttt</p>
+<script src="./js/live2dcubismcore.min.js" defer></script>
+<script src="./js/app.bundle.js" defer></script>
 <script>
   window.Live2DConfig = {
-    moc: '/Er/model.moc3',
-    texture: '/Er/texture.png',
-    motion: '/Er/motions/idle_01.motion3.json',
+    moc: './Er/model.moc3',
+    texture: './Er/texture.png',
+    motion: './Er/motions/idle_01.motion3.json',
   };
 </script>
 </body>
