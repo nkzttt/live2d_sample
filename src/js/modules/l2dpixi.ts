@@ -110,7 +110,7 @@ export class Model extends PIXI.Container {
     this._animations.splice(index, 0, animation);
   }
 
-  public playAnimation(name: string, index: number) {
+  public playAnimation(index: number) {
     const animatorLayer = this.animator.getLayer();
     animatorLayer.play(this._animations[index]);
   }

@@ -24,81 +24,59 @@ const loadResources = (
   });
 };
 
-const onLoad = (resources: PIXI.loaders.ResourceDictionary) => {
-  const builder = new ModelBuilder({
-    moc: Live2DCubismCore.Moc.fromArrayBuffer(resources.moc.data),
-    texture: resources.texture.texture,
-  });
-  const model = builder.build();
-
-  // アニメーション再生
-  model.addAnimation(0, resources.motion.data);
-  model.playAnimation("base", 0);
-
-  // id="#l2d"もしくはbodyにcanvasを追加
-  const target = document.querySelector("#l2d") || document.body;
-  const app = new PIXI.Application(target.clientWidth, target.clientHeight, {
+const onLoad = (
+  resources: PIXI.loaders.ResourceDictionary,
+  container: Element
+) => {
+  const { clientWidth: width, clientHeight: height } = container;
+  const app = new PIXI.Application(width, height, {
     transparent: true,
   });
-  target.appendChild(app.view);
 
-  // ステージへモデル追加
+  const model = new ModelBuilder({
+    moc: Live2DCubismCore.Moc.fromArrayBuffer(resources.moc.data),
+    texture: resources.texture.texture,
+  }).build();
+
   app.stage.addChild(model);
   app.stage.addChild(model.masks);
-
-  // 描画ループ
   app.ticker.add((deltaTime) => {
     model.update(deltaTime);
     model.masks.update(app.renderer);
   });
+  model.addAnimation(0, resources.motion.data);
+  model.playAnimation(0);
+  container.appendChild(app.view);
 
-  // リサイズイベント設定
-  window.onresize = initResize(app, model);
+  model.position = new PIXI.Point(width / 2, height / 2);
+  model.scale = new PIXI.Point(width, height);
+  model.masks.resize(width, height);
 };
 
-const initResize = (app: PIXI.Application, model: Model) => {
-  const onResize = () => {
-    // Keep 16:9 ratio.
-    const width = window.innerWidth;
-    const height = (width / 16.0) * 9.0;
+const run = () => {
+  const container = document.querySelector("#l2d");
+  if (!container) return;
 
-    // Resize app.
-    app.view.style.width = `${width}px`;
-    app.view.style.height = `${height}px`;
-    app.renderer.resize(width, height);
-
-    // Resize model.
-    model.position = new PIXI.Point(width * 0.5, height * 0.5);
-    model.scale = new PIXI.Point(model.position.x, model.position.x);
-
-    // Resize mask texture.
-    model.masks.resize(app.view.width, app.view.height);
-  };
-
-  // 描画時に即実行
-  onResize();
-
-  // 処理返却
-  return onResize;
+  loadResources([
+    {
+      name: "moc",
+      path: "/Er/model.moc3",
+      option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER },
+    },
+    {
+      name: "texture",
+      path: "/Er/texture.png",
+    },
+    {
+      name: "motion",
+      path: "/Er/motions/idle_01.motion3.json",
+      option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON },
+    },
+  ])
+    .then((resources) => onLoad(resources, container))
+    .catch((e: Error) => {
+      console.error(e);
+    });
 };
 
-loadResources([
-  {
-    name: "moc",
-    path: "/Er/model.moc3",
-    option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER },
-  },
-  {
-    name: "texture",
-    path: "/Er/texture.png",
-  },
-  {
-    name: "motion",
-    path: "/Er/motions/idle_01.motion3.json",
-    option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON },
-  },
-])
-  .then(onLoad)
-  .catch((e: Error) => {
-    console.error(e);
-  });
+run();
