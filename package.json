@@ -9,9 +9,9 @@
     "copy:assets:watch": "npm run copy:assets -- --watch",
     "bundle": "webpack",
     "bundle:watch": "webpack -w",
-    "build": "run-s type:check type:build bundle",
     "watch": "run-p copy:assets:watch bundle:watch",
     "server": "browser-sync start --config bs-config.js",
+    "build": "run-s test bundle",
     "test": "run-s tsc eslint",
     "tsc": "tsc --noEmit",
     "eslint": "eslint src/js"

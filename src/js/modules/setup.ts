@@ -53,23 +53,27 @@ const onLoad = (
   model.masks.resize(width, height);
 };
 
-export const setup = () => {
+export const setup = (
+  mocPath: string,
+  texcurePath: string,
+  motionPath: string
+) => {
   const container = document.querySelector("#l2d");
   if (!container) return;
 
   loadResources([
     {
       name: "moc",
-      path: "/Er/model.moc3",
+      path: mocPath,
       option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER },
     },
     {
       name: "texture",
-      path: "/Er/texture.png",
+      path: texcurePath,
     },
     {
       name: "motion",
-      path: "/Er/motions/idle_01.motion3.json",
+      path: motionPath,
       option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON },
     },
   ])
