@@ -1,5 +1,5 @@
 import * as PIXI from "pixi.js";
-import * as animationFramework from "./l2dframework/animation";
+import * as animationFramework from "./animation";
 
 export class ModelBuilder {
   private _moc: Live2DCubismCore.Moc;
