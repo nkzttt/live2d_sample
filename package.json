@@ -4,18 +4,17 @@
   "description": "This is live2d sample with PixiJS for web.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "run-p watch server",
-    "type:check": "tsc --noEmit",
-    "type:check:watch": "npm run type:check -- --watch",
-    "eslint": "eslint src/js",
     "copy:assets": "cpx \"src/assets/**\" dist",
     "copy:assets:watch": "npm run copy:assets -- --watch",
     "bundle": "webpack",
     "bundle:watch": "webpack -w",
     "build": "run-s type:check type:build bundle",
     "watch": "run-p copy:assets:watch bundle:watch",
-    "server": "browser-sync start --config bs-config.js"
+    "server": "browser-sync start --config bs-config.js",
+    "test": "run-s tsc eslint",
+    "tsc": "tsc --noEmit",
+    "eslint": "eslint src/js"
   },
   "keywords": [],
   "author": "",

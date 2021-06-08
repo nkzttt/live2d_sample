@@ -1,5 +1,5 @@
 import * as PIXI from "pixi.js";
-import { ModelBuilder, Model } from "./modules/l2dpixi";
+import { ModelBuilder } from "./modules/l2dpixi";
 
 const loadResources = (
   resources: {
