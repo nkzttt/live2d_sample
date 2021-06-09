@@ -1,3 +1,7 @@
+/**
+ * PIXI DOCS: https://pixijs.download/v4.8.9/docs/index.html
+ * PIXI EXAMPLES: https://pixijs.io/examples-v4/#/
+ */
 import * as PIXI from "pixi.js";
 import { ModelBuilder } from "./model";
 
