@@ -137,6 +137,7 @@ class AnimationLayer {
       : weight;
     this._animation.evaluate(
       this._time,
+      () => (this.currentTime = 0),
       animationWeight,
       this.blend,
       target,
@@ -149,6 +150,7 @@ class AnimationLayer {
       1 - weight * this.weightCrossfade(this._fadeTime, this._fadeDuration);
     this._goalAnimation.evaluate(
       this._goalTime,
+      () => (this.currentTime = 0),
       goalAnimationWeight,
       this.blend,
       target,
@@ -286,7 +288,6 @@ export class Animation {
   public parameterTracks: AnimationTrack[] = [];
   public partOpacityTracks: AnimationTrack[] = [];
   public userDataBodys: { time: number; value: string }[] = [];
-  private _callbackFunctions: Array<(arg: string) => void> = [];
   private _lastTime = 0;
 
   // TODO: type guard
@@ -359,27 +360,9 @@ export class Animation {
     });
   }
 
-  public addAnimationCallback(callback: (arg: string) => void) {
-    this._callbackFunctions.push(callback);
-  }
-
-  public removeAnimationCallback(callback: (arg: string) => void) {
-    const index = this._callbackFunctions.indexOf(callback);
-    if (index !== -1) {
-      this._callbackFunctions.splice(index, 1);
-    }
-  }
-
-  public clearAnimationCallback() {
-    this._callbackFunctions = [];
-  }
-
-  private callAnimationCallback(value: string) {
-    this._callbackFunctions.forEach((cb) => cb(value));
-  }
-
   public evaluate(
     time: number,
+    resetTime: () => void,
     weight: number,
     blend: IAnimationBlender,
     target: Live2DCubismCore.Model,
@@ -389,8 +372,8 @@ export class Animation {
     if (weight <= 0.01) return;
 
     if (this.loop) {
-      while (time > this.duration) {
-        time -= this.duration;
+      if (time > this.duration) {
+        resetTime();
       }
     }
 
@@ -452,38 +435,6 @@ export class Animation {
       });
     });
 
-    if (this._callbackFunctions.length) {
-      this.userDataBodys.forEach((userData) => {
-        if (
-          this.isEventTriggered(
-            userData.time,
-            time,
-            this._lastTime,
-            this.duration
-          )
-        )
-          this.callAnimationCallback(userData.value);
-      });
-    }
-
     this._lastTime = time;
-  }
-
-  private isEventTriggered(
-    timeEvaluate: number,
-    timeForward: number,
-    timeBack: number,
-    duration: number
-  ) {
-    if (timeForward > timeBack) {
-      if (timeEvaluate > timeBack && timeEvaluate < timeForward) return true;
-    } else {
-      if (
-        (timeEvaluate > 0 && timeEvaluate < timeForward) ||
-        (timeEvaluate > timeBack && timeEvaluate < duration)
-      )
-        return true;
-    }
-    return false;
   }
 }

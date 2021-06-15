@@ -15,13 +15,13 @@ export class ModelBuilder {
   };
 
   constructor({
-    moc,
+    mocBuffer,
     texture,
   }: {
-    moc: ModelBuilder["_moc"];
+    mocBuffer: ArrayBuffer;
     texture: ModelBuilder["_texture"];
   }) {
-    this._moc = moc;
+    this._moc = Live2DCubismCore.Moc.fromArrayBuffer(mocBuffer);
     this._setTimeScale = 1;
     this._texture = texture;
     this._animatorLayer = {
@@ -83,19 +83,13 @@ export class Model extends PIXI.Container {
     this._animations = [];
     this._meshes = [];
     this._coreModel.drawables.ids.forEach((_id, idIndex) => {
-      const uvs = this._coreModel.drawables.vertexUvs[idIndex].slice(
-        0,
-        this._coreModel.drawables.vertexUvs[idIndex].length
-      );
-      uvs.forEach((_uv, uvIndex) => {
-        const isEven = (uvIndex + 1) % 2 == 0;
-        if (isEven) uvs[uvIndex] = 1 - uvs[uvIndex];
-      });
-
       const mesh = new PIXI.mesh.Mesh(
         texture,
         this._coreModel.drawables.vertexPositions[idIndex],
-        uvs,
+        this._coreModel.drawables.vertexUvs[idIndex].map((uv, uvIndex) => {
+          const isEven = (uvIndex + 1) % 2 == 0;
+          return isEven ? 1 - uv : uv;
+        }),
         this._coreModel.drawables.indices[idIndex],
         PIXI.DRAW_MODES.TRIANGLES
       );
@@ -194,7 +188,7 @@ export class MaskSpriteContainer extends PIXI.Container {
     model.meshes.forEach((_mesh, meshIndex) => {
       if (model.coreModel.drawables.maskCounts[meshIndex] === 0) return;
 
-      const newContainer = new PIXI.Container();
+      const maskMeshContainer = new PIXI.Container();
 
       model.coreModel.drawables.masks[meshIndex].forEach((maskId) => {
         const maskMesh = new PIXI.mesh.Mesh(
@@ -207,20 +201,20 @@ export class MaskSpriteContainer extends PIXI.Container {
         maskMesh.name = model.meshes[maskId].name;
         maskMesh.transform = model.meshes[maskId].transform;
         maskMesh.filters = [this._maskShader];
-        newContainer.addChild(maskMesh);
+        maskMeshContainer.addChild(maskMesh);
       });
 
-      newContainer.transform = model.transform;
-      this._maskMeshContainers.push(newContainer);
+      maskMeshContainer.transform = model.transform;
+      this._maskMeshContainers.push(maskMeshContainer);
 
-      const newTexture = PIXI.RenderTexture.create(0, 0);
-      this._maskTextures.push(newTexture);
+      const maskTexture = PIXI.RenderTexture.create(0, 0);
+      this._maskTextures.push(maskTexture);
 
-      const newSprite = new PIXI.Sprite(newTexture);
-      this._maskSprites.push(newSprite);
-      this.addChild(newSprite);
+      const maskSprite = new PIXI.Sprite(maskTexture);
+      this._maskSprites.push(maskSprite);
+      this.addChild(maskSprite);
 
-      model.meshes[meshIndex].mask = newSprite;
+      model.meshes[meshIndex].mask = maskSprite;
     });
   }
 

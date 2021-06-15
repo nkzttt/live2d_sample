@@ -5,61 +5,58 @@
 import * as PIXI from "pixi.js";
 import { ModelBuilder } from "./model";
 
-const loadResources = (
+const loadResources = <Name extends string>(
   resources: {
-    name: string;
+    name: Name;
     path: string;
-    option?: Record<string, unknown>;
+    option?: PIXI.loaders.LoaderOptions;
   }[]
 ) => {
-  const loader = new PIXI.loaders.Loader();
+  const loader = PIXI.loaders.shared;
   resources.forEach(({ name, path, option }) => {
     loader.add(name, path, option);
   });
-  return new Promise<PIXI.loaders.ResourceDictionary>((resolve, reject) => {
-    loader
-      .load(
-        (
-          loader: PIXI.loaders.Loader,
-          resources: PIXI.loaders.ResourceDictionary
-        ) => resolve(resources)
-      )
-      .onError.add(reject);
-  });
+  return new Promise<{ [key in Name]: PIXI.loaders.Resource }>(
+    (resolve, reject) => {
+      loader
+        .load((loader, resources) => resolve(resources))
+        .onError.add(reject);
+    }
+  );
 };
 
 const onLoad = (
-  resources: PIXI.loaders.ResourceDictionary,
+  resources: { [key in "moc" | "texture" | "motion"]: PIXI.loaders.Resource },
   container: Element
 ) => {
   const { clientWidth: width, clientHeight: height } = container;
   const app = new PIXI.Application(width, height, {
     transparent: true,
   });
+  container.appendChild(app.view);
 
   const model = new ModelBuilder({
-    moc: Live2DCubismCore.Moc.fromArrayBuffer(resources.moc.data),
+    mocBuffer: resources.moc.data,
     texture: resources.texture.texture,
   }).build();
-
   app.stage.addChild(model);
+  model.position.set(width / 2, height / 2);
+  model.scale.set(width, height);
   app.stage.addChild(model.masks);
+  model.masks.resize(width, height);
+
+  model.addAnimation(0, resources.motion.data);
+  model.playAnimation(0);
+
   app.ticker.add((deltaTime) => {
     model.update(deltaTime);
     model.masks.update(app.renderer);
   });
-  model.addAnimation(0, resources.motion.data);
-  model.playAnimation(0);
-  container.appendChild(app.view);
-
-  model.position = new PIXI.Point(width / 2, height / 2);
-  model.scale = new PIXI.Point(width, height);
-  model.masks.resize(width, height);
 };
 
 export const setup = (
   mocPath: string,
-  texcurePath: string,
+  texturePath: string,
   motionPath: string
 ) => {
   const container = document.querySelector("#l2d");
@@ -73,7 +70,7 @@ export const setup = (
     },
     {
       name: "texture",
-      path: texcurePath,
+      path: texturePath,
     },
     {
       name: "motion",
