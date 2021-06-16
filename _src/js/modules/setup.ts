@@ -1,22 +1,22 @@
 /**
- * PIXI DOCS: https://pixijs.download/v4.8.9/docs/index.html
- * PIXI EXAMPLES: https://pixijs.io/examples-v4/#/
+ * PIXI DOCS: https://pixijs.download/v5.3.10/docs/index.html
+ * PIXI EXAMPLES: https://pixijs.io/examples/#/
  */
 import * as PIXI from "pixi.js";
 import { ModelBuilder } from "./model";
 
 const loadResources = <Name extends string>(
-  resources: {
+  resourceData: {
     name: Name;
     path: string;
-    option?: PIXI.loaders.LoaderOptions;
+    option?: PIXI.ILoaderOptions;
   }[]
 ) => {
-  const loader = PIXI.loaders.shared;
-  resources.forEach(({ name, path, option }) => {
+  const loader = PIXI.Loader.shared;
+  resourceData.forEach(({ name, path, option }) => {
     loader.add(name, path, option);
   });
-  return new Promise<{ [key in Name]: PIXI.loaders.Resource }>(
+  return new Promise<Partial<Record<Name, PIXI.LoaderResource>>>(
     (resolve, reject) => {
       loader
         .load((loader, resources) => resolve(resources))
@@ -26,26 +26,28 @@ const loadResources = <Name extends string>(
 };
 
 const onLoad = (
-  resources: { [key in "moc" | "texture" | "motion"]: PIXI.loaders.Resource },
+  resources: Partial<Record<"moc" | "texture" | "motion", PIXI.LoaderResource>>,
   container: Element
 ) => {
+  const { moc, texture, motion } = resources;
+  if (!moc || !texture || !motion) {
+    throw new Error("failed to load resources");
+  }
+
   const { clientWidth: width, clientHeight: height } = container;
-  const app = new PIXI.Application(width, height, {
-    transparent: true,
-  });
+  const app = new PIXI.Application({ width, height, transparent: true });
   container.appendChild(app.view);
 
   const model = new ModelBuilder({
-    mocBuffer: resources.moc.data,
-    texture: resources.texture.texture,
+    mocBuffer: moc.data,
+    texture: texture.texture,
   }).build();
-  app.stage.addChild(model);
+  app.stage.addChild(model, model.masks);
   model.position.set(width / 2, height / 2);
   model.scale.set(width, height);
-  app.stage.addChild(model.masks);
   model.masks.resize(width, height);
 
-  model.addAnimation(0, resources.motion.data);
+  model.addAnimation(0, motion.data);
   model.playAnimation(0);
 
   app.ticker.add((deltaTime) => {
@@ -66,7 +68,7 @@ export const setup = (
     {
       name: "moc",
       path: mocPath,
-      option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.BUFFER },
+      option: { xhrType: PIXI.LoaderResource.XHR_RESPONSE_TYPE.BUFFER },
     },
     {
       name: "texture",
@@ -75,7 +77,7 @@ export const setup = (
     {
       name: "motion",
       path: motionPath,
-      option: { xhrType: PIXI.loaders.Resource.XHR_RESPONSE_TYPE.JSON },
+      option: { xhrType: PIXI.LoaderResource.XHR_RESPONSE_TYPE.JSON },
     },
   ])
     .then((resources) => onLoad(resources, container))

@@ -1,6 +1,6 @@
 /**
- * PIXI DOCS: https://pixijs.download/v4.8.9/docs/index.html
- * PIXI EXAMPLES: https://pixijs.io/examples-v4/#/
+ * PIXI DOCS: https://pixijs.download/v5.3.10/docs/index.html
+ * PIXI EXAMPLES: https://pixijs.io/examples/#/
  */
 import * as PIXI from "pixi.js";
 import * as animationFramework from "./animation";
@@ -47,7 +47,7 @@ export class Model extends PIXI.Container {
   private _texture: PIXI.Texture;
   private _animator: animationFramework.Animator;
   private _animations: animationFramework.Animation[];
-  private _meshes: PIXI.mesh.Mesh[];
+  private _meshes: PIXI.SimpleMesh[];
   private _maskSpriteContainer: MaskSpriteContainer;
 
   get coreModel() {
@@ -83,7 +83,7 @@ export class Model extends PIXI.Container {
     this._animations = [];
     this._meshes = [];
     this._coreModel.drawables.ids.forEach((_id, idIndex) => {
-      const mesh = new PIXI.mesh.Mesh(
+      const mesh = new PIXI.SimpleMesh(
         texture,
         this._coreModel.drawables.vertexPositions[idIndex],
         this._coreModel.drawables.vertexUvs[idIndex].map((uv, uvIndex) => {
@@ -95,10 +95,12 @@ export class Model extends PIXI.Container {
       );
       mesh.name = this._coreModel.drawables.ids[idIndex];
       mesh.scale.y *= -1;
+      mesh.zIndex = this._coreModel.drawables.renderOrders[idIndex];
 
       this.addChild(mesh);
       this._meshes.push(mesh);
     });
+    this.sortableChildren = true;
 
     this._maskSpriteContainer = new MaskSpriteContainer(this);
   }
@@ -128,25 +130,8 @@ export class Model extends PIXI.Container {
         )
       ) {
         mesh.vertices = this._coreModel.drawables.vertexPositions[i];
-        mesh.dirtyVertex = true;
       }
     });
-
-    if (
-      this._meshes.some((_mesh, i) =>
-        Live2DCubismCore.Utils.hasRenderOrderDidChangeBit(
-          this._coreModel.drawables.dynamicFlags[i]
-        )
-      )
-    ) {
-      this.children.sort((a, b) => {
-        const aIndex = this._meshes.indexOf(a as PIXI.mesh.Mesh);
-        const bIndex = this._meshes.indexOf(b as PIXI.mesh.Mesh);
-        const aRenderOrder = this._coreModel.drawables.renderOrders[aIndex];
-        const bRenderOrder = this._coreModel.drawables.renderOrders[bIndex];
-        return aRenderOrder - bRenderOrder;
-      });
-    }
 
     this._coreModel.drawables.resetDynamicFlags();
   }
@@ -167,7 +152,7 @@ export class MaskSpriteContainer extends PIXI.Container {
   private _maskSprites: PIXI.Sprite[];
   private _maskMeshContainers: PIXI.Container[];
   private _maskTextures: PIXI.RenderTexture[];
-  private _maskShader: PIXI.Filter<Record<string, unknown>>;
+  private _maskShader: PIXI.Filter;
 
   get maskSprites() {
     return this._maskSprites;
@@ -191,11 +176,14 @@ export class MaskSpriteContainer extends PIXI.Container {
       const maskMeshContainer = new PIXI.Container();
 
       model.coreModel.drawables.masks[meshIndex].forEach((maskId) => {
-        const maskMesh = new PIXI.mesh.Mesh(
-          model.meshes[maskId].texture,
-          model.meshes[maskId].vertices,
-          model.meshes[maskId].uvs,
-          model.meshes[maskId].indices,
+        const maskMesh = new PIXI.SimpleMesh(
+          model.texture,
+          model.coreModel.drawables.vertexPositions[maskId],
+          model.coreModel.drawables.vertexUvs[maskId].map((uv, uvIndex) => {
+            const isEven = (uvIndex + 1) % 2 == 0;
+            return isEven ? 1 - uv : uv;
+          }),
+          model.coreModel.drawables.indices[maskId],
           PIXI.DRAW_MODES.TRIANGLES
         );
         maskMesh.name = model.meshes[maskId].name;
@@ -207,7 +195,7 @@ export class MaskSpriteContainer extends PIXI.Container {
       maskMeshContainer.transform = model.transform;
       this._maskMeshContainers.push(maskMeshContainer);
 
-      const maskTexture = PIXI.RenderTexture.create(0, 0);
+      const maskTexture = PIXI.RenderTexture.create();
       this._maskTextures.push(maskTexture);
 
       const maskSprite = new PIXI.Sprite(maskTexture);
@@ -225,7 +213,7 @@ export class MaskSpriteContainer extends PIXI.Container {
     this._maskShader = new PIXI.Filter();
   }
 
-  public update(appRenderer: PIXI.WebGLRenderer | PIXI.CanvasRenderer) {
+  public update(appRenderer: PIXI.Renderer) {
     this._maskSprites.forEach((_sprite, i) => {
       appRenderer.render(
         this._maskMeshContainers[i],
@@ -238,8 +226,8 @@ export class MaskSpriteContainer extends PIXI.Container {
   }
 
   public resize(viewWidth: number, viewHeight: number) {
-    this._maskTextures.forEach((texture) =>
-      texture.resize(viewWidth, viewHeight, false)
-    );
+    this._maskTextures.forEach((texture) => {
+      texture.resize(viewWidth, viewHeight);
+    });
   }
 }
