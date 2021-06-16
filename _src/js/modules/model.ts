@@ -152,7 +152,6 @@ export class MaskSpriteContainer extends PIXI.Container {
   private _maskSprites: PIXI.Sprite[];
   private _maskMeshContainers: PIXI.Container[];
   private _maskTextures: PIXI.RenderTexture[];
-  private _maskShader: PIXI.Filter;
 
   get maskSprites() {
     return this._maskSprites;
@@ -165,7 +164,6 @@ export class MaskSpriteContainer extends PIXI.Container {
   constructor(model: Model) {
     super();
 
-    this._maskShader = new PIXI.Filter();
     this._maskMeshContainers = [];
     this._maskTextures = [];
     this._maskSprites = [];
@@ -188,7 +186,6 @@ export class MaskSpriteContainer extends PIXI.Container {
         );
         maskMesh.name = model.meshes[maskId].name;
         maskMesh.transform = model.meshes[maskId].transform;
-        maskMesh.filters = [this._maskShader];
         maskMeshContainer.addChild(maskMesh);
       });
 
@@ -210,18 +207,11 @@ export class MaskSpriteContainer extends PIXI.Container {
     this._maskSprites.forEach((sprite) => sprite.destroy());
     this._maskTextures.forEach((texture) => texture.destroy());
     this._maskMeshContainers.forEach((container) => container.destroy());
-    this._maskShader = new PIXI.Filter();
   }
 
   public update(appRenderer: PIXI.Renderer) {
     this._maskSprites.forEach((_sprite, i) => {
-      appRenderer.render(
-        this._maskMeshContainers[i],
-        this._maskTextures[i],
-        true,
-        undefined,
-        false
-      );
+      appRenderer.render(this._maskMeshContainers[i], this._maskTextures[i]);
     });
   }
 
