@@ -21,6 +21,13 @@
 <h1>LIVE2D SAMPLE</h1>
 <p><a href="https://github.com/nkzttt/live2d_sample">GitHub</a></p>
 <div id="l2d" style="width: 500px; height: 500px;"></div>
+<div>
+  <p>アニメーション切り替え</p>
+  <button data-js-trigger="switchAnimation" data-js-attributes="idle">アイドリング</button>
+  <button data-js-trigger="switchAnimation" data-js-attributes="mumumu">怒る</button>
+  <button data-js-trigger="switchAnimation" data-js-attributes="norinori">楽しい</button>
+  <button data-js-trigger="switchAnimation" data-js-attributes="utouto">眠い</button>
+</div>
 <p>&copy; 2021 nkzttt</p>
 <script src="./js/live2dcubismcore.min.js" defer></script>
 <script src="./js/app.bundle.js" defer></script>
@@ -28,7 +35,12 @@
   window.Live2DConfig = {
     moc: './Er/model.moc3',
     texture: './Er/texture.png',
-    motion: './Er/motions/idle_01.motion3.json',
+    motions: {
+      idle: './Er/motions/idle_01.motion3.json',
+      mumumu: './Er/motions/mumumu.motion3.json',
+      norinori: './Er/motions/norinori.motion3.json',
+      utouto: './Er/motions/utouto.motion3.json',
+    },
   };
 </script>
 </body>

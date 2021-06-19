@@ -1,8 +1,20 @@
 import { setup } from "./modules/setup";
 
-if (window.Live2DConfig) {
-  const { moc, texture, motion } = window.Live2DConfig;
-  if (moc && texture && motion) {
-    setup(moc, texture, motion);
-  }
-}
+(async () => {
+  const result = await setup();
+  if (!result) return;
+
+  const { model } = result;
+  model.playAnimation("idle");
+
+  document
+    .querySelectorAll('[data-js-trigger="switchAnimation"]')
+    .forEach((element) => {
+      element.addEventListener("click", (e) => {
+        if (!(e.target instanceof HTMLButtonElement)) return;
+        const animationName = e.target.dataset.jsAttributes;
+        if (!animationName) return;
+        model.setNextAnimation(animationName);
+      });
+    });
+})();

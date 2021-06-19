@@ -70,6 +70,7 @@ class AnimationLayer {
   private _fadeTime = 0;
   private _fadeDuration = 0;
   private _play = false;
+  private _animationEndCallback: (() => void) | null = null;
 
   public blend: IAnimationBlender = builtinAnimationBlenders.override;
   public weightCrossfade: IAnimationCrossfadeWeighter =
@@ -119,6 +120,10 @@ class AnimationLayer {
     this.currentTime = 0;
   }
 
+  public onAnimationEnd(cb: () => void) {
+    this._animationEndCallback = cb;
+  }
+
   public _update(deltaTime: number) {
     if (!this._play) return;
 
@@ -137,7 +142,10 @@ class AnimationLayer {
       : weight;
     this._animation.evaluate(
       this._time,
-      () => (this.currentTime = 0),
+      () => {
+        this.currentTime = 0;
+        if (this._animationEndCallback) this._animationEndCallback();
+      },
       animationWeight,
       this.blend,
       target,

@@ -46,7 +46,8 @@ export class Model extends PIXI.Container {
   private _coreModel: Live2DCubismCore.Model;
   private _texture: PIXI.Texture;
   private _animator: animationFramework.Animator;
-  private _animations: animationFramework.Animation[];
+  private _animations: Record<string, animationFramework.Animation>;
+  private _currentAnimation: string | null = null;
   private _meshes: PIXI.SimpleMesh[];
   private _maskSpriteContainer: MaskSpriteContainer;
 
@@ -60,6 +61,10 @@ export class Model extends PIXI.Container {
 
   get animator() {
     return this._animator;
+  }
+
+  get animations() {
+    return this._animations;
   }
 
   get meshes() {
@@ -80,7 +85,7 @@ export class Model extends PIXI.Container {
     this._coreModel = coreModel;
     this._texture = texture;
     this._animator = animator;
-    this._animations = [];
+    this._animations = {};
     this._meshes = [];
     this._coreModel.drawables.ids.forEach((_id, idIndex) => {
       const mesh = new PIXI.SimpleMesh(
@@ -105,14 +110,24 @@ export class Model extends PIXI.Container {
     this._maskSpriteContainer = new MaskSpriteContainer(this);
   }
 
-  public addAnimation(index: number, data: Record<string, unknown>) {
+  public addAnimation(key: string, data: Record<string, unknown>) {
     const animation = new animationFramework.Animation(data);
-    this._animations.splice(index, 0, animation);
+    this._animations[key] = animation;
   }
 
-  public playAnimation(index: number) {
+  public playAnimation(key: string) {
     const animatorLayer = this.animator.getLayer();
-    animatorLayer.play(this._animations[index]);
+    animatorLayer.play(this._animations[key]);
+    this._currentAnimation = key;
+  }
+
+  public setNextAnimation(key: string) {
+    const animatorLayer = this.animator.getLayer();
+    animatorLayer.onAnimationEnd(() => {
+      if (this._currentAnimation !== key) {
+        animatorLayer.play(this._animations[key]);
+      }
+    });
   }
 
   public update(delta: number) {
