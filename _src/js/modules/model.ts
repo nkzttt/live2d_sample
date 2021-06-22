@@ -126,6 +126,7 @@ export class Model extends PIXI.Container {
     animatorLayer.onAnimationEnd(() => {
       if (this._currentAnimation !== key) {
         animatorLayer.play(this._animations[key]);
+        this._currentAnimation = key;
       }
     });
   }
