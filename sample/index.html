@@ -5,30 +5,67 @@
   <meta name="viewport"
         content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>LIVE2D SAMPLE</title>
+  <title>Live2D Sample for WEB</title>
+  <link rel="stylesheet" href="https://unpkg.com/ress/dist/ress.min.css">
   <style>
-      * {
-          padding: 0;
-          margin: 0;
-      }
+      /* #f2f2f2, #6dbff2, #364c59  */
       body {
-          background-color: #fcfcfc;
-          color: #404040;
+          background-color: #f2f2f2;
+          color: #364c59;
+          font-size: 16px;
+      }
+      .container {
+          max-width: 1000px;
+          margin: 0 auto;
+          padding: 10px;
+      }
+      .title {
+          color: #6dbff2;
+          font-size: 1.6rem;
+      }
+      .github {
+          margin-top: 10px;
+      }
+      .githubLink {
+          font-size: 1.4rem;
+          color: #364c59;
+      }
+      @media screen and (max-width: 1000px) {
+          .l2dContainer {
+              margin-left: calc((100vw - 500px) / 2);
+          }
+      }
+      .heading {
+          margin: 30px 0 10px;
+          font-size: 1.2rem;
+      }
+      .button {
+          border-radius: 5px;
+          padding: 5px 15px;
+          background-color: #364c59;
+          color: #f2f2f2;
+      }
+      .copyright {
+          margin-top: 30px;
       }
   </style>
 </head>
 <body>
-<h1>LIVE2D SAMPLE</h1>
-<p><a href="https://github.com/nkzttt/live2d_sample">GitHub</a></p>
-<div id="l2d" style="width: 500px; height: 500px;"></div>
-<div>
-  <p>アニメーション切り替え</p>
-  <button data-js-trigger="switchAnimation" data-js-attributes="idle">アイドリング</button>
-  <button data-js-trigger="switchAnimation" data-js-attributes="mumumu">怒る</button>
-  <button data-js-trigger="switchAnimation" data-js-attributes="norinori">楽しい</button>
-  <button data-js-trigger="switchAnimation" data-js-attributes="utouto">眠い</button>
+<div class="container">
+  <h1 class="title">Live2D Sample for WEB</h1>
+  <p class="github"><a href="https://github.com/nkzttt/live2d_sample" class="githubLink">GitHub</a></p>
+  <div class="l2dContainer">
+    <div id="l2d" style="width: 500px; height: 500px;"></div>
+  </div>
+  <h2 class="heading">アニメーション切り替え</h2>
+  <div>
+    <button class="button" data-js-trigger="switchAnimation" data-js-attributes="idle">アイドリング</button>
+    <button class="button" data-js-trigger="switchAnimation" data-js-attributes="mumumu">怒る</button>
+    <button class="button" data-js-trigger="switchAnimation" data-js-attributes="norinori">楽しい</button>
+    <button class="button" data-js-trigger="switchAnimation" data-js-attributes="utouto">眠い</button>
+  </div>
+  <p class="copyright">&copy; 2021 nkzttt</p>
 </div>
-<p>&copy; 2021 nkzttt</p>
 <script src="./js/live2dcubismcore.min.js" defer></script>
 <script src="./js/app.bundle.js" defer></script>
 <script>
