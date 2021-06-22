@@ -14,7 +14,11 @@ import { setup } from "./modules/setup";
         if (!(e.target instanceof HTMLButtonElement)) return;
         const animationName = e.target.dataset.jsAttributes;
         if (!animationName) return;
-        model.setNextAnimation(animationName);
+        model.setNextAnimation(
+          animationName,
+          true,
+          model.currentAnimation === "idle"
+        );
       });
     });
 })();

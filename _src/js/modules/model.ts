@@ -47,6 +47,7 @@ export class Model extends PIXI.Container {
   private _texture: PIXI.Texture;
   private _animator: animationFramework.Animator;
   private _animations: Record<string, animationFramework.Animation>;
+  private _defaultAnimation: string | null = null;
   private _currentAnimation: string | null = null;
   private _meshes: PIXI.SimpleMesh[];
   private _maskSpriteContainer: MaskSpriteContainer;
@@ -65,6 +66,10 @@ export class Model extends PIXI.Container {
 
   get animations() {
     return this._animations;
+  }
+
+  get currentAnimation() {
+    return this._currentAnimation;
   }
 
   get meshes() {
@@ -118,16 +123,25 @@ export class Model extends PIXI.Container {
   public playAnimation(key: string) {
     const animatorLayer = this.animator.getLayer();
     animatorLayer.play(this._animations[key]);
+    this._defaultAnimation = key;
     this._currentAnimation = key;
   }
 
-  public setNextAnimation(key: string) {
+  public setNextAnimation(key: string, once?: boolean, immediately?: boolean) {
     const animatorLayer = this.animator.getLayer();
+    const queues =
+      once && this._defaultAnimation ? [key, this._defaultAnimation] : [key];
+    if (immediately) {
+      const next = queues.shift();
+      if (!next) return;
+      animatorLayer.play(this._animations[next]);
+      this._currentAnimation = next;
+    }
     animatorLayer.onAnimationEnd(() => {
-      if (this._currentAnimation !== key) {
-        animatorLayer.play(this._animations[key]);
-        this._currentAnimation = key;
-      }
+      const next = queues.shift();
+      if (!next) return;
+      animatorLayer.play(this._animations[next]);
+      this._currentAnimation = next;
     });
   }
 
